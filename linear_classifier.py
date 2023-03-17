@@ -23,7 +23,7 @@ class LinearClassifier:
         # initialize the gradient as zero
         dW = torch.zeros_like(W)
         number_training = X.shape[0]
-        
+
         # Calculating Loss
         scores = X.mm(W)
         correct_class_scores = scores[range(number_training), y]
@@ -45,7 +45,13 @@ class LinearClassifier:
 
         return loss, dW
 
-    def train(self, X: torch.Tensor, y: torch.Tensor, X_val: torch.Tensor, y_val: torch.Tensor, lr: float = 1e-2, reg: float = 1e-2, num_iterations: int=100, batch_size: int=100):
+    def calculate_accuracy(self, y_true, y_pred):
+        number_training = y_pred.shape[0]
+        acc = ((number_training - (y_pred -
+                        y_true).count_nonzero())/number_training)
+        return acc.item()
+
+    def train(self, X: torch.Tensor, y: torch.Tensor, X_val: torch.Tensor, y_val: torch.Tensor, lr: float = 1e-2, reg: float = 1e-2, num_iterations: int = 100, batch_size: int = 100):
         # Initialize Everything
         number_training = X.shape[0]
         number_validations = X_val.shape[0]
@@ -54,7 +60,7 @@ class LinearClassifier:
         self.W = 0.000001 * torch.randn(
             image_dimention, number_classes, device=X.device, dtype=X.dtype
         )
-        loss_history = []
+        history = {'loss': [], 'train_acc': 0, 'val_acc': 0}
 
         # Main Iteration for training
 
@@ -63,20 +69,23 @@ class LinearClassifier:
                 X, y, number_training, batch_size)
 
             loss, gradient = self.__svm(self.W, X_batch, y_batch, reg)
-            loss_history.append(loss.item())
+            history['loss'].append(loss.item())
 
             # Gradient upate to weights
-            self.W -= lr * gradient
+            self.W -= lr * gradient      
+        
+        y_pred_train = self.predict(X)
+        train_acc = self.calculate_accuracy(y,y_pred_train)
+        history['train_acc'] = train_acc
 
-            y_pred_train = self.predict(X_batch)
-            train_acc = ((number_training - (y_pred_train - y_batch).count_nonzero())/number_training)
-            y_pred_validation = self.predict(X_val)            
-            val_acc = ((number_validations - (y_pred_validation - y_val).count_nonzero())/number_validations)
+        y_pred_validation = self.predict(X_val)
+        val_acc = self.calculate_accuracy(y_val,y_pred_validation)
+        history['val_acc'] = val_acc
 
-            print(f'Iternation Number {num_iteration}/{num_iterations}: trainning Accuracy: {train_acc:.2f}, Validation Accuracy: {val_acc:.2f}', end='\r')
+        print(f'Trainning Accuracy: {train_acc:.2f}, Validation Accuracy: {val_acc:.2f}')
 
-        return loss_history
-    
+        return history
+
     def predict(self, X: torch.Tensor):
         # Initialized
         y_pred = torch.zeros(X.shape[0], dtype=torch.int64)
@@ -84,3 +93,4 @@ class LinearClassifier:
         y_pred = X.mm(W).argmax(dim=1)
 
         return y_pred
+        
