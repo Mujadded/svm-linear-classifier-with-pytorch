@@ -17,13 +17,13 @@ class LinearClassifier:
         y_batch = y[indices]
         return X_batch, y_batch
 
-    def __svm(W, X, y, reg):
+    def __svm(self, W, X, y, reg):
         loss = 0.0
 
         # initialize the gradient as zero
         dW = torch.zeros_like(W)
         number_training = X.shape[0]
-
+        
         # Calculating Loss
         scores = X.mm(W)
         correct_class_scores = scores[range(number_training), y]
@@ -45,34 +45,42 @@ class LinearClassifier:
 
         return loss, dW
 
-    def train(self, X: torch.Tensor, y: torch.Tensor, lr: float = 1e-2, reg: float = 1e-2, iter_count=100, batch_size=100):
+    def train(self, X: torch.Tensor, y: torch.Tensor, X_val: torch.Tensor, y_val: torch.Tensor, lr: float = 1e-2, reg: float = 1e-2, num_iterations: int=100, batch_size: int=100):
         # Initialize Everything
         number_training = X.shape[0]
+        number_validations = X_val.shape[0]
         image_dimention = X.shape[1]
-        number_classes = torch.max(y)
-        W = 0.000001 * torch.randn(
+        number_classes = torch.max(y)+1
+        self.W = 0.000001 * torch.randn(
             image_dimention, number_classes, device=X.device, dtype=X.dtype
         )
         loss_history = []
 
         # Main Iteration for training
 
-        for _ in range(iter_count):
+        for num_iteration in range(num_iterations):
             X_batch, y_batch = self.__get_batch(
                 X, y, number_training, batch_size)
 
-            loss, gradient = self.__svm(W, X_batch, y_batch, reg)
+            loss, gradient = self.__svm(self.W, X_batch, y_batch, reg)
             loss_history.append(loss.item())
 
             # Gradient upate to weights
-            W -= lr * gradient
+            self.W -= lr * gradient
 
-        self.W = W
+            y_pred_train = self.predict(X_batch)
+            train_acc = ((number_training - (y_pred_train - y_batch).count_nonzero())/number_training)
+            y_pred_validation = self.predict(X_val)            
+            val_acc = ((number_validations - (y_pred_validation - y_val).count_nonzero())/number_validations)
+
+            print(f'Iternation Number {num_iteration}/{num_iterations}: trainning Accuracy: {train_acc:.2f}, Validation Accuracy: {val_acc:.2f}', end='\r')
+
         return loss_history
     
     def predict(self, X: torch.Tensor):
         # Initialized
         y_pred = torch.zeros(X.shape[0], dtype=torch.int64)
-        y_pred = X.mm(self.W).argmax(dim=1)
+        W = self.W
+        y_pred = X.mm(W).argmax(dim=1)
 
         return y_pred
