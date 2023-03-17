@@ -5,33 +5,62 @@ import random
 class LinearClassifier:
     def __init__(self, seed=42):
         """
-        Initialize the Linear class
+        Initialize the Linear classifier and setting the Random values to seed value
         """
         random.seed(seed)
         torch.manual_seed(seed)
         self.W = None
 
     def __get_batch(self, X, y, number_training, batch_size):
+        """
+        Creating batches of the dataset given in the parameters
+        """
         indices = torch.randint(0, number_training, (batch_size,))
         X_batch = X[indices, :]
         y_batch = y[indices]
         return X_batch, y_batch
 
     def __svm(self, W, X, y, reg):
+        """
+        The SVM loss funtion calculation
+
+        Inputs:
+        - W: A PyTorch tensor of shape (D, C) containing weights.
+        - X: A PyTorch tensor of shape (N, D) containing a data.
+        - y: A PyTorch tensor of shape (N,) containing training labels.
+        - reg: (float) regularization strength
+        """
+        # Initiate Loss as Zero
         loss = 0.0
 
-        # initialize the gradient as zero
+        # Initialize the gradient as zero
         dW = torch.zeros_like(W)
+
+        # Lets save the number of Training we have
         number_training = X.shape[0]
 
         # Calculating Loss
         scores = X.mm(W)
+
+        # Collecting the scores of all correct label
         correct_class_scores = scores[range(number_training), y]
+
+        # The margin of SVM (Score of y[j] - Score of y true)
         margin = scores - correct_class_scores.view(-1, 1) + 1
+
+        # The Maximum check is being done like this for optimazations
         margin[margin < 0] = 0
+
+        # As in the formula we dont check the values of correct label j!==y
         margin[range(number_training), y] = 0
+
+        # Now the loss is
         loss = margin.sum()
+
+        # We need to take the mean of the loss
         loss /= number_training
+
+        # Adding the regularization
         loss += reg * torch.sum(W * W)
 
         # Calculating Gratident of SVM
@@ -46,6 +75,9 @@ class LinearClassifier:
         return loss, dW
 
     def calculate_accuracy(self, y_true, y_pred):
+        """
+        The accuracy calculator
+        """
         number_training = y_pred.shape[0]
         acc = ((number_training - (y_pred -
                         y_true).count_nonzero())/number_training)
@@ -68,6 +100,7 @@ class LinearClassifier:
             X_batch, y_batch = self.__get_batch(
                 X, y, number_training, batch_size)
 
+            # Getting the loss from loss funtion
             loss, gradient = self.__svm(self.W, X_batch, y_batch, reg)
             history['loss'].append(loss.item())
 
