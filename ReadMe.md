@@ -2,6 +2,8 @@
 
 A Simple implementation of Linear Classifier with SVM loss funtion using pyTorch.
 
+This uses GPU and also vectorized Python to be most optimized.
+
 ## Files
 
 `linear_classifier.py` has the main code for Linear Classifier with SVM
